@@ -9,11 +9,20 @@ pipeline {
         stage('Install') {
             steps { sh 'python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"' }
         }
-        stage('Lint') {
-            steps { sh '.venv/bin/ruff check .' }
+        stage('Lint & Typecheck') {
+            steps {
+                sh '.venv/bin/ruff check src/ tests/ .agents/scripts/ examples/'
+                sh '.venv/bin/mypy src/'
+            }
         }
-        stage('Test') {
-            steps { sh '.venv/bin/pytest --cov=src --cov-report=term-missing' }
+        stage('Contract & Property Tests') {
+            steps { sh '.venv/bin/pytest -v --cov=scikit_hopfield --cov-report=term-missing' }
+        }
+        stage('BADSFA Gate Verification') {
+            steps {
+                sh 'echo "{\"toolCall\":{\"name\":\"edit_file\",\"args\":{\"Path\":\"tests/test_scikit_hopfield.py\"}}}" | .venv/bin/python .agents/scripts/guard_specs.py | grep -q "\"deny\""'
+                sh 'echo "{\"terminationReason\":\"NO_TOOL_CALL\"}" | .venv/bin/python .agents/scripts/checkable_done.py | grep -q "\"allow\""'
+            }
         }
     }
 }
