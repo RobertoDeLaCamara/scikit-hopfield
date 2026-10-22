@@ -20,8 +20,16 @@ pipeline {
         }
         stage('BADSFA Gate Verification') {
             steps {
-                sh 'echo "{\"toolCall\":{\"name\":\"edit_file\",\"args\":{\"Path\":\"tests/test_scikit_hopfield.py\"}}}" | .venv/bin/python .agents/scripts/guard_specs.py | grep -q "\"deny\""'
-                sh 'echo "{\"terminationReason\":\"NO_TOOL_CALL\"}" | .venv/bin/python .agents/scripts/checkable_done.py | grep -q "\"allow\""'
+                sh '''.venv/bin/python -c '
+import json, subprocess, sys
+p1 = json.dumps({"toolCall": {"name": "edit_file", "args": {"Path": "src/../tests/test_scikit_hopfield.py"}}})
+r1 = subprocess.run([sys.executable, ".agents/scripts/guard_specs.py"], input=p1, text=True, capture_output=True, check=True)
+assert json.loads(r1.stdout)["decision"] == "deny", r1.stdout
+p2 = json.dumps({"terminationReason": "NO_TOOL_CALL"})
+r2 = subprocess.run([sys.executable, ".agents/scripts/checkable_done.py"], input=p2, text=True, capture_output=True, check=True)
+assert json.loads(r2.stdout)["decision"] == "allow", r2.stdout
+print("BADSFA Gates Verified:", r1.stdout.strip(), r2.stdout.strip())
+' '''
             }
         }
     }
