@@ -1,0 +1,38 @@
+{
+  "scanner": "secagent + Ruff S-rules + manual @Security review",
+  "secagent_summary": {
+    "total_findings": 0,
+    "iac_scanner": "0 findings",
+    "notes": "trufflehog, pip-audit, and bandit binaries not installed in base WSL environment; Ruff S-rules (flake8-bandit) and manual security review executed."
+  },
+  "findings": [
+    {
+      "severity": "HIGH",
+      "file": ".agents/scripts/guard_specs.py",
+      "line": 15,
+      "issue": "is_protected_path() normalizes slashes and strips workspace_roots via string prefix matching without Path.resolve() or os.path.normpath(); paths like 'src/../tests/test_scikit_hopfield.py' bypass the guard.",
+      "fix": "Resolve both target_path and workspace_roots with Path.resolve() and check target.is_relative_to(root / 'specs') or target.is_relative_to(root / 'tests')."
+    },
+    {
+      "severity": "HIGH",
+      "file": ".agents/scripts/guard_specs.py",
+      "line": 66,
+      "issue": "Shell command regex blacklist r'(>+|sed\\s+-i|rm\\s+|mv\\s+|cp\\s+|Set-Content|Out-File).*(specs|tests)[/\\\\]' is bypassed via 'python3 -c', 'tee', 'dd', 'truncate', or 'git checkout/apply'.",
+      "fix": "Reject any run_command referencing 'specs' or 'tests' when combined with interpreter or write primitives (python, tee, dd, truncate, git, sh, bash), or enforce OS-level read-only permissions."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": ".agents/scripts/guard_specs.py",
+      "line": 47,
+      "issue": "PreToolUse hook only checks tool names ('edit_file', 'write_file') and argument keys ('Path', 'file_path'), missing tools like 'multi_replace_file_content' or keys like 'TargetFile' and 'path'.",
+      "fix": "Expand the tool set to all file-mutating tools and inspect all path-like argument keys ('Path', 'file_path', 'path', 'TargetFile', 'NotebookPath')."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": ".agents/scripts/checkable_done.py",
+      "line": 42,
+      "issue": "Untrusted workspacePaths[0] from stdin JSON is passed as cwd to subprocess.run (Ruff S603), and subprocess.TimeoutExpired is uncaught if the test suite exceeds 25s.",
+      "fix": "Pin repo_root = Path(__file__).resolve().parents[2] (validating workspacePaths against it) and catch subprocess.TimeoutExpired to return a structured JSON 'continue' decision."
+    }
+  ]
+}

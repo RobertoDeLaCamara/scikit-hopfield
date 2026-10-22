@@ -1,0 +1,60 @@
+classDiagram
+    direction TB
+    class HopfieldEnergyCore {
+        <<module: scikit_hopfield.energy>>
+        +l2_normalize(X: ndarray, eps: float) ndarray
+        +logsumexp_scaled(sim: ndarray, beta: float) ndarray
+        +attention_weights(memories: ndarray, queries: ndarray, beta: float) ndarray
+        +hopfield_energy(memories: ndarray, queries: ndarray, beta: float) ndarray
+        +hopfield_update_step(memories: ndarray, queries: ndarray, beta: float) ndarray
+        +reclag_score(memories: ndarray, queries: ndarray, beta: float, tau_rect: float) ndarray
+    }
+    class HopfieldOOD {
+        <<scikit_hopfield.ood>>
+        +float beta
+        +str mode
+        +float tau_rect
+        +int n_prototypes
+        +float contamination
+        +bool normalize
+        +ndarray memories_
+        +ndarray outlier_memories_
+        +float threshold_
+        +fit(X: ndarray, y: ndarray, X_outliers: ndarray) HopfieldOOD
+        +decision_function(X: ndarray) ndarray
+        +predict(X: ndarray) ndarray
+        +explain(X: ndarray, top_k: int) dict
+    }
+    class HopfieldMetastableCluster {
+        <<scikit_hopfield.clustering>>
+        +float beta
+        +int max_iter
+        +float tol
+        +float merge_tol
+        +bool normalize
+        +ndarray memories_
+        +ndarray sample_attractors_
+        +ndarray cluster_centers_
+        +ndarray labels_
+        +int n_clusters_
+        +fit(X: ndarray, y: ndarray) HopfieldMetastableCluster
+        +fit_predict(X: ndarray, y: ndarray) ndarray
+        +bifurcation_spectrum(X: ndarray, betas: list) dict
+    }
+    class HopfieldBAM {
+        <<scikit_hopfield.bam>>
+        +float beta
+        +int max_iter
+        +float tol
+        +float gap_quantile
+        +bool normalize
+        +ndarray X_a_
+        +ndarray Y_b_
+        +float gap_threshold_
+        +fit(X_domain_a: ndarray, Y_domain_b: ndarray) HopfieldBAM
+        +resonate(query_a: ndarray, top_k: int) dict
+        +detect_knowledge_gap(query_a: ndarray) dict
+    }
+    HopfieldEnergyCore <.. HopfieldOOD : delegates energy & softmax
+    HopfieldEnergyCore <.. HopfieldMetastableCluster : delegates CCCP update & norm
+    HopfieldEnergyCore <.. HopfieldBAM : delegates logsumexp_scaled & norm

@@ -1,0 +1,49 @@
+[
+  {
+    "id": "DD-001",
+    "title": "Max-Shifted Mean-Scaled LogSumExp for Overflow-Free Energy and Exact Asymptotic Limits",
+    "module": "scikit_hopfield.energy.logsumexp_scaled",
+    "decision": "Compute beta^{-1} * (m + log(mean(exp(beta * sim - m)))) where m = max_i(beta * sim_{q,i}).",
+    "rationale": "Standard exp(beta * sim) overflows float64 when beta > 709. Subtracting row-wise maximum m guarantees all exponents are <= 0 (bounded in (0, 1]), eliminating overflow across arbitrary beta while bounding underflow harmlessly to 0 around the dominant mode. Using mean() (subtracting log(M)) ensures exact convergence to max_i sim_{q,i} as beta -> infinity (1-NN limit) and to mean_i sim_{q,i} as beta -> 0 (Simplified Hopfield Energy / centroid limit).",
+    "invariants": [
+      "No NaN/Inf for any beta in (0, 1e6]",
+      "lim_{beta -> inf} logsumexp_scaled(sim, beta) == max_i sim_{q,i}",
+      "lim_{beta -> 0+} logsumexp_scaled(sim, beta) == mean_i sim_{q,i}"
+    ]
+  },
+  {
+    "id": "DD-002",
+    "title": "Continuous Beta Interpolation Dial and Memory Modes in HopfieldOOD",
+    "module": "scikit_hopfield.ood.HopfieldOOD",
+    "decision": "Expose a unified scikit-learn/PyOD compatible estimator supporting five modes ('full', 'she', 'kmeans', 'reclag', 'boosting') governed by inverse temperature beta and contamination quantile calibration.",
+    "rationale": "Bridges the gap between pytorch-ood (which only implements degenerate SHE prototypes) and PyOD (which lacks Modern Hopfield estimators). Enables continuous interpolation between global centroid matching (beta -> 0) and local 1-NN boundary adherence (beta -> infinity), plus auxiliary outlier repulsion in 'boosting' mode.",
+    "invariants": [
+      "predict(X) returns +1 for inliers and -1 for outliers (scikit-learn OutlierMixin convention)",
+      "decision_function(X) is higher for more anomalous inputs (energy convention)",
+      "attention_weights rows sum to 1.0 within floating-point precision"
+    ]
+  },
+  {
+    "id": "DD-003",
+    "title": "Rectified Lagrangian (RecLag) Origin Attractor for Far-OOD Collapse",
+    "module": "scikit_hopfield.energy.reclag_score",
+    "decision": "Apply ReLU rectification max(0, sim - tau_rect) prior to logsumexp_scaled aggregation, clamping queries with max_i(sim_{q,i} - tau_rect) <= 0 directly to the trivial origin attractor score of 0.0.",
+    "rationale": "Implements AAAI 2025 Rectified Lagrangian dynamics: when a query is far from all stored memories (all cosine similarities <= tau_rect), active associative support vanishes and the query collapses to the trivial origin fixed point (score = 0.0), cleanly separating far-OOD samples from in-distribution samples (which attain strictly negative scores < 0.0).",
+    "invariants": [
+      "reclag_score(memories, q) == 0.0 whenever max_i(q @ memories.T) <= tau_rect",
+      "reclag_score(memories, q) < 0.0 whenever max_i(q @ memories.T) > tau_rect"
+    ]
+  },
+  {
+    "id": "DD-004",
+    "title": "Bidirectional Associative Memory (BAM) Cross-Attention Resonance and Convergence Criteria",
+    "module": "scikit_hopfield.bam.HopfieldBAM",
+    "decision": "Alternate softmax cross-attention projections A -> B -> A with row-wise max-shifted logits and L2 normalization, terminating early when ||a_{t+1} - a_t||_2 < tol or when stationary dominant attention weight max_i P_b > 0.5 at max_iter.",
+    "rationale": "Hetero-associative recall across coupled embedding manifolds (e.g., Vault Notes <-> Book Chunks) requires bounded norm stability and deterministic termination. Furthermore, calibrating an in-distribution energy ceiling via quantile(energies, gap_quantile) + 0.05 enables zero-shot Knowledge Gap detection before hallucinated retrieval occurs.",
+    "invariants": [
+      "Domain A and Domain B memory matrices must have identical row counts (paired associative slots)",
+      "Dual stopping criterion: step-wise L2 state delta < tol or dominant basin probability > 0.5",
+      "detect_knowledge_gap flags queries whose Domain A Hopfield energy exceeds gap_threshold_"
+    ]
+  }
+]

@@ -1,0 +1,65 @@
+{
+  "prd": {
+    "agent": "@TPM",
+    "updated": "2026-10-22T17:23:53+0200",
+    "bytes": 8051,
+    "sha256": "9ee32b1ae931e90d41f6ad28b8b4214f54a8af13485a7924f63483f6e2fe074a",
+    "file": "prd.md"
+  },
+  "architecture_diagram": {
+    "agent": "@Architect",
+    "updated": "2026-10-22T17:23:19+0200",
+    "bytes": 2234,
+    "sha256": "5df79bfb8b5e86a7317d01be6f3682ed98f756ddac7062a3a87a243c2b602446",
+    "file": "architecture_diagram.mmd"
+  },
+  "design_decisions": {
+    "agent": "@Architect",
+    "updated": "2026-10-22T17:23:19+0200",
+    "bytes": 4088,
+    "sha256": "2b876c7f9cb25cff6d1477a59b976981a61ad58c32440ae246d97acb937b24b0",
+    "file": "design_decisions.json"
+  },
+  "adrs": {
+    "agent": "@TechStudy",
+    "updated": "2026-10-22T17:23:19+0200",
+    "bytes": 1006,
+    "sha256": "2f8b5d953c9209bbb39f46dfdfbe246897db7884bc5b2066c28a98ed53e0418d",
+    "file": "adrs.json"
+  },
+  "test_gaps": {
+    "agent": "@QA",
+    "updated": "2026-10-22T17:23:37+0200",
+    "bytes": 2921,
+    "sha256": "a059465dc65695d2b2a8996da8d7dbd28f943b69c57184e94ef9749cc74f3805",
+    "file": "test_gaps.json"
+  },
+  "user_stories": {
+    "agent": "@Requirements",
+    "updated": "2026-10-22T17:23:53+0200",
+    "bytes": 5174,
+    "sha256": "698fa874317df87bf2d03aeadc2ce87e26d168bfc45ddba83cf1d981557b7a42",
+    "file": "user_stories.json"
+  },
+  "threat_model": {
+    "agent": "@Security",
+    "updated": "2026-10-22T17:25:39+0200",
+    "bytes": 2156,
+    "sha256": "688e20eb7dea5d25e4b0bfc1b14bcf59da97950e9d83b090ed8300ba54cc4517",
+    "file": "threat_model.json"
+  },
+  "security_findings": {
+    "agent": "@Security",
+    "updated": "2026-10-22T17:25:39+0200",
+    "bytes": 2326,
+    "sha256": "a15e67fa222acb7477e5543bb81e176a1502d62ceea9616486a629b669b2432c",
+    "file": "security_findings.json"
+  },
+  "code_findings": {
+    "agent": "@Reviewer",
+    "updated": "2026-10-22T17:25:40+0200",
+    "bytes": 4440,
+    "sha256": "e78e8be2a0ec18b87a855134412bd3a28d2e9cafa420a611b03c7038da780c99",
+    "file": "code_findings.json"
+  }
+}

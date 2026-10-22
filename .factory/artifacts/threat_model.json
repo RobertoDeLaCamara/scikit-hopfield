@@ -1,0 +1,44 @@
+{
+  "project": "scikit-hopfield",
+  "timestamp": "2026-10-22T15:24:00Z",
+  "assets": [
+    "Behavioral specifications (specs/) and contract test suite (tests/)",
+    "Agent lifecycle enforcement hooks (.agents/scripts/guard_specs.py, .agents/scripts/checkable_done.py)",
+    "Associative memory banks and embeddings in HopfieldOOD, HopfieldMetastableCluster, and HopfieldBAM (src/scikit_hopfield/)"
+  ],
+  "trust_boundaries": [
+    "Untrusted hook stdin payload (toolCall args, workspacePaths) -> BADSFA PreToolUse / Stop hooks",
+    "Developer agent shell/file tool invocations -> Protected specs/ and tests/ directories",
+    "External query/training numpy arrays -> Hopfield energy & associative memory estimators"
+  ],
+  "stride_threats": [
+    {
+      "id": "T-01",
+      "category": "Elevation of Privilege / Tampering",
+      "target": ".agents/scripts/guard_specs.py:15",
+      "description": "Path traversal (e.g. src/../tests/...) or symlink bypasses is_protected_path() string prefix matching, allowing Developer role to tamper with specs/ or tests/.",
+      "severity": "HIGH"
+    },
+    {
+      "id": "T-02",
+      "category": "Tampering / Defense Evasion",
+      "target": ".agents/scripts/guard_specs.py:66",
+      "description": "Shell command regex blacklist in run_command hook can be bypassed via python -c, tee, git, or subshells to modify protected tests/ or specs/.",
+      "severity": "HIGH"
+    },
+    {
+      "id": "T-03",
+      "category": "Tampering / Arbitrary Code Execution",
+      "target": ".agents/scripts/checkable_done.py:24,42",
+      "description": "Stop hook trusts workspacePaths[0] from stdin JSON as subprocess cwd for pytest/unittest execution without validating against repository root, and does not catch subprocess.TimeoutExpired.",
+      "severity": "MEDIUM"
+    },
+    {
+      "id": "T-04",
+      "category": "Denial of Service / Numerical Integrity",
+      "target": "src/scikit_hopfield/energy.py:26",
+      "description": "Non-positive inverse temperature (beta <= 0) or invalid mode strings produce division-by-zero or silent fallback in anomaly and gap detection.",
+      "severity": "MEDIUM"
+    }
+  ]
+}

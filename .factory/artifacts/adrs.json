@@ -1,0 +1,15 @@
+[
+  {
+    "id": "ADR-0001",
+    "title": "Unified Modern Hopfield Energy Estimators (scikit-hopfield)",
+    "status": "Accepted",
+    "date": "2026-10-22",
+    "path": "docs/adr/0001-scikit-hopfield-architecture.md",
+    "context": "Existing libraries leave a critical gap between Modern Hopfield Network theory and practical scikit-learn / PyOD workflows (pytorch-ood only implements degenerate SHE; PyOD lacks Modern Hopfield estimators; knowledge tools lack metastable bifurcation clustering and continuous BAM).",
+    "decision": "Implement a zero-bloat, NumPy-first scikit-learn-compatible package scikit_hopfield exposing three estimators (HopfieldOOD, HopfieldMetastableCluster, HopfieldBAM) governed by a shared, numerically stable energy core (scikit_hopfield.energy).",
+    "consequences": [
+      "Single mathematical engine powers both IDS Novelty Detection and Associative Knowledge Vaults.",
+      "Strict max-shifted logsumexp prevents exponential overflow at high beta values."
+    ]
+  }
+]

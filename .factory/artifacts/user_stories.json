@@ -1,0 +1,49 @@
+[
+  {
+    "story_id": "US-BOLT-001-A",
+    "epic": "BOLT-001: HopfieldOOD (Modern Hopfield Energy Out-of-Distribution Detector)",
+    "as_a": "ML / SecOps Engineer working on the IDS FT-Transformer Novelty Channel",
+    "i_want": "a scikit-learn/PyOD compatible HopfieldOOD estimator supporting continuous inverse temperature beta in 'full' mode and class-prototype compression in 'she' mode",
+    "so_that": "I can smoothly interpolate between 1-Nearest Neighbor cosine boundary detection (high beta) and low-latency class centroid scoring (SHE) on network flow embeddings",
+    "acceptance_criteria": [
+      "Given an L2-normalized memory matrix X of in-distribution patterns, when HopfieldOOD is evaluated with beta = 200.0 in 'full' mode on L2-normalized query vectors Q, the negated Hopfield energy score matches -max_i cos(x_i, q) within 0.02 absolute tolerance without numerical overflow.",
+      "Given labeled in-distribution training samples (X, y) across K classes, when HopfieldOOD is fitted with mode = 'she', the stored memory bank contains exactly K L2-normalized class prototypes.",
+      "In 'she' mode, in-distribution queries score strictly lower anomaly energy than orthogonal OOD queries, and fit() calibrates threshold_ and decision_scores_ according to contamination."
+    ]
+  },
+  {
+    "story_id": "US-BOLT-001-B",
+    "epic": "BOLT-001: HopfieldOOD (Modern Hopfield Energy Out-of-Distribution Detector)",
+    "as_a": "ML / SecOps Engineer hardening IDS anomaly detectors against far-OOD and adversarial probes",
+    "i_want": "Rectified Lagrangian ('reclag') activation clamping, Hopfield Boosting with auxiliary outliers (X_outliers), and top-k associative memory attribution (explain)",
+    "so_that": "low-density OOD queries collapse to a trivial origin attractor, known outlier manifolds are actively repelled, and every alert is attributed to its closest stored memories",
+    "acceptance_criteria": [
+      "When HopfieldOOD is fitted with mode = 'reclag' and tau_rect = 0.5, any query whose maximum cosine similarity to stored memories is below tau_rect collapses to zero rectified activation and receives the maximum anomaly score.",
+      "When HopfieldOOD is fitted with in-distribution patterns X_id and auxiliary outlier patterns X_outliers = X_ood, the boosting energy score penalizes proximity to X_ood while rewarding proximity to X_id.",
+      "When explain(Q, top_k=3) is called on a fitted HopfieldOOD detector, it returns top-3 memory indices of shape (n_queries, 3) and non-negative attention weights where full-bank weights sum to 1.0 (within 1e-6) per query."
+    ]
+  },
+  {
+    "story_id": "US-BOLT-002-A",
+    "epic": "BOLT-002: HopfieldMetastableCluster (Metastable Bifurcation Clustering)",
+    "as_a": "Knowledge Engineer and Data Scientist organizing semantic vaults",
+    "i_want": "a scikit-learn ClusterMixin estimator (HopfieldMetastableCluster) that evolves embeddings along the continuous Modern Hopfield fixed-point update rule and sweeps inverse temperature beta",
+    "so_that": "correlated embeddings monotonically descend the Lyapunov energy landscape and coalesce into hierarchical metastable attractors across temperature regimes",
+    "acceptance_criteria": [
+      "Given stored patterns X and an arbitrary initial query state xi_0, applying the continuous update xi_{t+1} = X^T softmax(beta * X * xi_t) iteratively results in strictly non-increasing Hopfield energy at every step (Delta E <= 1e-6).",
+      "Given three well-separated semantic clusters in embedding space, running HopfieldMetastableCluster with high temperature (beta = 0.01) coalesces all points into a single global metastable state (n_clusters_ == 1).",
+      "Running HopfieldMetastableCluster on the same three clusters with intermediate temperature (beta = 8.0) separates points into the 3 true metastable cluster attractors (n_clusters_ == 3), and bifurcation_spectrum(X, betas) returns the cluster count trajectory across beta values."
+    ]
+  },
+  {
+    "story_id": "US-BOLT-003-A",
+    "epic": "BOLT-003: HopfieldBAM (Continuous Hetero-Associative Bidirectional Associative Memory)",
+    "as_a": "Personal Knowledge Management (Obsidian + Books) Architect",
+    "i_want": "a continuous HopfieldBAM estimator bridging two distinct embedding domains (Domain A: Vault Notes <-> Domain B: Book Chunks) with energy-based knowledge gap detection",
+    "so_that": "queries reverberate across domains to retrieve resonant paired concepts while deterministically flagging unindexed knowledge gaps",
+    "acceptance_criteria": [
+      "Given paired or cross-linked concept embeddings between Domain A (Vault Notes) and Domain B (Book Chunks), passing a noisy query in Domain A to HopfieldBAM.resonate(query_a, top_k) converges along the bidirectional trajectory A -> B -> A within max_iter and retrieves the true matching Domain B concept as top-1.",
+      "Given a fitted HopfieldBAM over existing Vault Notes and Book Chunks, evaluating an orthogonal query on an unindexed topic via detect_knowledge_gap(query_a) returns is_gap = True with associative energy strictly exceeding the calibrated in-distribution threshold."
+    ]
+  }
+]

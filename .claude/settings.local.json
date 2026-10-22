@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp(*)",
+      "Bash(pytest*)",
+      "Bash(python*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Read(**)"
+    ],
+    "deny": [
+      "Edit(specs/**)",
+      "Edit(tests/**)",
+      "Write(specs/**)",
+      "Write(tests/**)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf *)"
+    ]
+  }
+}

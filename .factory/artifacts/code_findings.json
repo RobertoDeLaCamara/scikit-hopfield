@@ -1,0 +1,84 @@
+{
+  "linters": {
+    "ruff": {
+      "status": "FAILED",
+      "errors_src_tests": 15,
+      "errors_including_scripts": 21,
+      "rules_triggered": [
+        "I001",
+        "UP037",
+        "E501",
+        "S603"
+      ]
+    },
+    "mypy": {
+      "status": "PASSED",
+      "output": "Success: no issues found in 5 source files"
+    }
+  },
+  "findings": [
+    {
+      "severity": "HIGH",
+      "file": ".agents/scripts/guard_specs.py",
+      "line": 15,
+      "issue": "Path traversal bypass in is_protected_path(): string prefix stripping without Path.resolve() allows paths like 'src/../tests/test_scikit_hopfield.py' to bypass protection.",
+      "fix": "Canonicalize paths via Path(target_path).resolve() and check target.is_relative_to(Path(root).resolve() / 'specs') or target.is_relative_to(Path(root).resolve() / 'tests')."
+    },
+    {
+      "severity": "HIGH",
+      "file": ".agents/scripts/guard_specs.py",
+      "line": 66,
+      "issue": "Incomplete shell command blacklist regex allows mutating specs/ or tests/ via 'python3 -c', 'tee', 'git', or 'dd'.",
+      "fix": "Block any command referencing specs/ or tests/ alongside write/interpreter binaries (python, tee, dd, truncate, git, bash, sh) or enforce read-only permissions."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": ".agents/scripts/guard_specs.py",
+      "line": 47,
+      "issue": "Guard only inspects 'edit_file'/'write_file' and 'Path'/'file_path' keys, missing other file-editing tools and argument names ('TargetFile', 'path').",
+      "fix": "Expand tool set to include all file mutation tools and extract paths across ('Path', 'file_path', 'path', 'TargetFile', 'NotebookPath')."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": ".agents/scripts/checkable_done.py",
+      "line": 42,
+      "issue": "Subprocess execution uses untrusted workspacePaths[0] as cwd (Ruff S603) and does not catch subprocess.TimeoutExpired on the 25s timeout.",
+      "fix": "Pin repo_root = Path(__file__).resolve().parents[2] and catch subprocess.TimeoutExpired to emit a JSON 'continue' decision."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "src/scikit_hopfield/energy.py",
+      "line": 26,
+      "issue": "No validation for beta > 0 in logsumexp_scaled(), hopfield_energy(), or estimator __init__ methods; beta <= 0 causes ZeroDivisionError/NaN or inverted energy landscapes.",
+      "fix": "Raise ValueError('beta must be strictly positive (beta > 0).') when beta <= 0 in energy primitives and estimator constructors."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "src/scikit_hopfield/ood.py",
+      "line": 44,
+      "issue": "HopfieldOOD silently accepts invalid 'mode' strings and falls back to 'full' mode in fit() and decision_function().",
+      "fix": "Validate mode against {'full', 'she', 'kmeans', 'reclag', 'boosting'} in __init__ and raise ValueError on unknown modes."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "src/scikit_hopfield/ood.py",
+      "line": 98,
+      "issue": "Calling decision_function(), predict(), or explain() on HopfieldOOD (or resonate()/detect_knowledge_gap() on HopfieldBAM at bam.py:67) before fit() raises raw AttributeError, and estimators lack BaseEstimator get_params/set_params despite docstring claims.",
+      "fix": "Add a _check_is_fitted() check raising ValueError/NotFittedError before accessing fitted attributes, and implement get_params/set_params."
+    },
+    {
+      "severity": "LOW",
+      "file": "src/scikit_hopfield/bam.py",
+      "line": 103,
+      "issue": "HopfieldBAM.resonate() overwrites converged flag via 'converged |= np.max(probs, axis=1) > 0.5' after reaching max_iter, masking non-convergent trajectories that failed 'diff < self.tol'.",
+      "fix": "Remove 'converged |= np.max(probs, axis=1) > 0.5' so 'converged' strictly reflects convergence within self.tol, and freeze updates for already-converged batch items."
+    },
+    {
+      "severity": "LOW",
+      "file": "src/scikit_hopfield/bam.py",
+      "line": 6,
+      "issue": "15 Ruff lint errors across src/ and tests/ (I001 unsorted imports in bam.py:6, ood.py:5, test_scikit_hopfield.py:2; UP037 quoted annotations in bam.py:43, clustering.py:48, ood.py:61; E501 lines > 100 chars in bam.py:45,120, energy.py:55, test_scikit_hopfield.py:63,68,69,73,105,121).",
+      "fix": "Run '.venv/bin/ruff check --fix src/ tests/ .agents/scripts/' and wrap lines exceeding 100 characters."
+    }
+  ]
+}

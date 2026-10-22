@@ -1,0 +1,70 @@
+{
+  "agent": "@QA",
+  "role": "QA & Edge-Case Hunter / TestGen",
+  "project": "scikit-hopfield",
+  "test_suite_summary": {
+    "test_files": [
+      "tests/test_scikit_hopfield.py",
+      "tests/test_property_edge_cases.py"
+    ],
+    "total_tests": 23,
+    "passed": 23,
+    "failed": 0,
+    "statement_coverage_pct": 100.0,
+    "statements_covered": 230,
+    "statements_total": 230
+  },
+  "verified_edge_cases": [
+    {
+      "id": "EC-001",
+      "component": "energy.attention_weights / logsumexp_scaled / hopfield_energy",
+      "boundary_condition": "Arbitrary Hypothesis matrices & extreme beta in [1e-3, 500.0]",
+      "status": "MITIGATED_AND_TESTED",
+      "verification": "test_property_attention_weights_simplex_and_stability & test_property_arbitrary_matrices_attention_and_energy_finite"
+    },
+    {
+      "id": "EC-002",
+      "component": "energy.l2_normalize & all estimators",
+      "boundary_condition": "Zero-norm vectors (np.zeros) and 1D array inputs across beta in [1e-3, 500.0]",
+      "status": "MITIGATED_AND_TESTED",
+      "verification": "test_extreme_beta_and_zero_norm_vectors_numerical_stability"
+    },
+    {
+      "id": "EC-003",
+      "component": "bam.HopfieldBAM.fit",
+      "boundary_condition": "Domain slot count mismatch (X_domain_a.shape[0] != Y_domain_b.shape[0])",
+      "status": "MITIGATED_AND_TESTED",
+      "verification": "test_bam_domain_shape_mismatch_raises_value_error"
+    },
+    {
+      "id": "EC-004",
+      "component": "ood.HopfieldOOD",
+      "boundary_condition": "mode='kmeans' (including n_prototypes > N single-sample memory bank) and mode='she' with y=None or single-class labels",
+      "status": "MITIGATED_AND_TESTED",
+      "verification": "test_ood_kmeans_and_unlabeled_or_single_class_she"
+    },
+    {
+      "id": "EC-005",
+      "component": "clustering.HopfieldMetastableCluster",
+      "boundary_condition": "fit_predict and bifurcation_spectrum across low/high beta regimes",
+      "status": "MITIGATED_AND_TESTED",
+      "verification": "test_clustering_fit_predict_and_bifurcation_spectrum"
+    }
+  ],
+  "residual_test_gaps": [
+    {
+      "gap_id": "GAP-001",
+      "severity": "low",
+      "component": "energy / estimators",
+      "description": "Explicit NaN or Inf values injected directly inside input feature matrices X or Q are not rejected with a custom ValueError before matrix multiplication.",
+      "recommendation": "Add optional input validation (e.g., np.isfinite check or sklearn check_array) if untrusted upstream embeddings may contain raw NaNs."
+    },
+    {
+      "gap_id": "GAP-002",
+      "severity": "low",
+      "component": "HopfieldOOD / HopfieldMetastableCluster / HopfieldBAM",
+      "description": "Non-positive beta (beta <= 0) or negative contamination/gap_quantile parameters are not guarded in __init__.",
+      "recommendation": "Add parameter range guards in estimator __init__ or fit methods."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "badsfa-spec-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "edit_file|write_file|run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/guard_specs.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "badsfa-checkable-done": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python scripts/checkable_done.py",
+        "timeout": 30
+      }
+    ]
+  }
+}
