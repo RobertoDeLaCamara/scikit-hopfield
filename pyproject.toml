@@ -35,6 +35,8 @@ select = ["E", "W", "F", "I", "B", "UP", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+# Compact research scripts (one-off validation runs); results are reproduced, not styled.
+"examples/cnds_ids_ood_validation/**" = ["E", "W", "F403", "F405", "S101", "UP031", "B007"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
