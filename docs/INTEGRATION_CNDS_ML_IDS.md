@@ -122,7 +122,7 @@ Following the rules in `Claude y agentic AI en mis proyectos.md` (anti-MLR-Bench
      - `Energy of Logits` (Liu et al., NeurIPS 2020)
      - `KNN` ($k=1$ and $k=50$, Sun et al., ICML 2022)
      - Existing `IsolationForest` and `LSTM-AE` z-scores.
-   - Log every trial to **MLflow (`http://192.168.1.147:5000`)** and require a valid `run_id` in `results.json` via the BADSFA `Stop` hook.
+   - Log every trial to **MLflow (`http://192.168.1.147:5050`)** and require a valid `run_id` in `results.json` via the BADSFA `Stop` hook.
 2. **Leave-One-Attack-Class-Out (LOACO) Validation:**
    - Hold out each of the 9 attack classes in turn, fit `HopfieldOOD` only on `Benign` + the remaining 8 attack classes, and measure detection recall & FPR95 on the held-out unseen attack family.
 3. **Ensemble Diversity Check:**
