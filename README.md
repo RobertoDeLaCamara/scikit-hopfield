@@ -41,6 +41,13 @@ gap = bam.detect_knowledge_gap(query_note)
 
 ---
 
+## Energy Normalization Note
+
+- `logsumexp_scaled` (used by `HopfieldOOD` and `HopfieldBAM`) computes the **mean-scaled** log-sum-exp $\beta^{-1}\log\left(\frac{1}{N}\sum_{i=1}^{N} e^{\beta s_i}\right)$, keeping scores invariant to memory bank size $N$ (important when comparing ID and `X_outliers` banks) and ensuring $\beta \to 0 \Rightarrow \operatorname{mean}_i s_i$ and $\beta \to \infty \Rightarrow \max_i s_i$.
+- `hopfield_energy` computes the **sum-based** Ramsauer et al. (ICLR 2021) Lyapunov energy $-\beta^{-1}\log\sum_{i=1}^N e^{\beta \mathbf{x}_i^T\boldsymbol{\xi}} + \frac{1}{2}\|\boldsymbol{\xi}\|^2$, which differs from `-logsumexp_scaled` by $-\beta^{-1}\log N + \frac{1}{2}\|\boldsymbol{\xi}\|^2$ (a constant shift for fixed $N$ and unit-norm queries).
+
+---
+
 ## BADSFA & Software Factory Governance
 
 - **SSOT Rules:** [`AGENTS.md`](./AGENTS.md) & [`CLAUDE.md`](./CLAUDE.md)

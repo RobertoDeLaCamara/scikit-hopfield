@@ -5,13 +5,44 @@ build-backend = "hatchling.build"
 [project]
 name = "scikit-hopfield"
 version = "0.1.0"
-description = "Modern Hopfield Energy Estimators for scikit-learn and PyOD: OOD Detection (RecLag/SHE), Metastable Bifurcation Clustering, and Cross-Domain BAM"
+description = "Modern Continuous Hopfield Energy Estimators for scikit-learn: OOD Detection (RecLag/SHE), Metastable Bifurcation Clustering, and Cross-Domain BAM"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
+authors = [
+    { name = "Roberto de la Cámara", email = "robcamgar@outlook.es" },
+]
+keywords = [
+    "hopfield",
+    "modern-hopfield-networks",
+    "out-of-distribution",
+    "anomaly-detection",
+    "scikit-learn",
+    "clustering",
+    "associative-memory",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
 dependencies = [
     "numpy>=1.26",
     "scikit-learn>=1.6",
 ]
+
+[project.urls]
+Homepage = "https://github.com/RobertoDeLaCamara/scikit-hopfield"
+Repository = "https://github.com/RobertoDeLaCamara/scikit-hopfield"
+Issues = "https://github.com/RobertoDeLaCamara/scikit-hopfield/issues"
+Changelog = "https://github.com/RobertoDeLaCamara/scikit-hopfield/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
