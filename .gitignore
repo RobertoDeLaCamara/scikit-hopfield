@@ -10,6 +10,8 @@ venv/
 .mypy_cache/
 .coverage
 htmlcov/
+.hypothesis/
+.claude/settings.local.json
 dist/
 build/
 *.egg-info/

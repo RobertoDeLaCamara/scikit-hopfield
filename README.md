@@ -41,6 +41,28 @@ gap = bam.detect_knowledge_gap(query_note)
 
 ---
 
+## Benchmarks (`HopfieldOOD` vs `IsolationForest`, `LOF`, `kNN`)
+
+Reproduce locally with `python examples/benchmark_ood_baselines.py` (target unseen-ID FPR = `5.0%`, `seed=42`):
+
+| Dataset | `HopfieldOOD(full)` | `HopfieldOOD(reclag)` | `HopfieldOOD(she)` | `IsolationForest` | `LOF (k=20)` | `kNN (k=5)` |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **digits** (64d, 8–9 OOD) — AUROC | 0.9465 | **0.9572** | 0.8900 (3 ms) | 0.5422 | 0.8629 | 0.9013 |
+| **embeddings** (128d, 5-cls) — AUROC | 0.9998 | 0.9600 | **1.0000** (2 ms) | 0.8046 | 0.9968 | 0.9976 |
+| **wine** (13d, cls-2 OOD) — AUROC | 0.7644 | 0.7441 | 0.8948 | **0.9920** | 0.9749 | 0.9712 |
+| **breast_cancer** (30d, malignant OOD) — AUROC | 0.2826 | 0.2772 | 0.6515 | **0.9626** | 0.9524 | 0.9517 |
+
+**Takeaway (inductive bias):** With `normalize=True`, `HopfieldOOD` operates on cosine/angular geometry and excels on multi-class high-dimensional representations and neural embeddings (see also the real FT-Transformer IDS benchmark in [`examples/cnds_ids_ood_validation/`](./examples/cnds_ids_ood_validation/README.md), where `HopfieldOOD(mode="she")` reaches `0.960` LOACO AUROC). On single-cluster zero-centered tabular datasets where OOD is driven by radial magnitude rather than direction (e.g., standardized `breast_cancer`), L2 normalization discards norm information and Euclidean/tree baselines (`IsolationForest`, `LOF`, `kNN`) are the right tool.
+
+---
+
+## Energy Normalization Note
+
+- `logsumexp_scaled` (used by `HopfieldOOD` and `HopfieldBAM`) computes the **mean-scaled** log-sum-exp $\beta^{-1}\log\left(\frac{1}{N}\sum_{i=1}^{N} e^{\beta s_i}\right)$, keeping scores invariant to memory bank size $N$ (important when comparing ID and `X_outliers` banks) and ensuring $\beta \to 0 \Rightarrow \operatorname{mean}_i s_i$ and $\beta \to \infty \Rightarrow \max_i s_i$.
+- `hopfield_energy` computes the **sum-based** Ramsauer et al. (ICLR 2021) Lyapunov energy $-\beta^{-1}\log\sum_{i=1}^N e^{\beta \mathbf{x}_i^T\boldsymbol{\xi}} + \frac{1}{2}\|\boldsymbol{\xi}\|^2$, which differs from `-logsumexp_scaled` by $-\beta^{-1}\log N + \frac{1}{2}\|\boldsymbol{\xi}\|^2$ (a constant shift for fixed $N$ and unit-norm queries).
+
+---
+
 ## BADSFA & Software Factory Governance
 
 - **SSOT Rules:** [`AGENTS.md`](./AGENTS.md) & [`CLAUDE.md`](./CLAUDE.md)

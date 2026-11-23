@@ -38,8 +38,15 @@ def l2_normalize(X: np.ndarray, eps: float = 1e-12) -> np.ndarray:
 
 def logsumexp_scaled(sim: np.ndarray, beta: float) -> np.ndarray:
     """
-    Numerically stable computation of beta^{-1} * log(mean_i exp(beta * sim_{q,i})).
-    Converges to max_i sim_{q,i} as beta -> infinity, and to mean_i sim_{q,i} as beta -> 0.
+    Numerically stable mean-scaled log-sum-exp (log-mean-exp):
+        beta^{-1} * log(mean_i exp(beta * sim_{q,i}))
+        = beta^{-1} * log(sum_i exp(beta * sim_{q,i})) - beta^{-1} * log(N).
+
+    Dividing by N ensures bank-size invariance (e.g., comparing ID and auxiliary OOD
+    banks of different sizes) and exact asymptotic limits: max_i sim_{q,i} as beta -> inf
+    and mean_i sim_{q,i} as beta -> 0. Note that this differs from the sum-based Ramsauer
+    Lyapunov energy in `hopfield_energy` by the constant offset beta^{-1} * log(N)
+    (plus the quadratic term 0.5 * ||xi||^2).
     """
     b = validate_beta(beta)
     z = b * sim
@@ -68,6 +75,9 @@ def hopfield_energy(
     Modern Hopfield Lyapunov Energy (Ramsauer et al., ICLR 2021):
         E(xi) = -beta^{-1} log(sum_i exp(beta * x_i^T xi)) + 0.5 * ||xi||^2
     Guaranteed to decrease monotonically under xi_{t+1} = X^T softmax(beta * X xi_t).
+
+    Note: Uses the sum-based log-sum-exp of Ramsauer et al.; it differs from
+    `-logsumexp_scaled(queries @ memories.T, beta)` by `-beta^{-1} * log(N) + 0.5 * ||xi||^2`.
     """
     b = validate_beta(beta)
     mem = validate_array(memories, "memories")
