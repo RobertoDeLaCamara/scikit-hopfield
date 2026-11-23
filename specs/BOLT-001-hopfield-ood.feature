@@ -6,7 +6,8 @@ Feature: Modern Hopfield Energy Out-of-Distribution Detector (BOLT-001)
   Scenario: High-beta asymptotic convergence to 1-Nearest Neighbor cosine similarity
     Given an L2-normalized memory matrix X of in-distribution patterns
     When HopfieldOOD is evaluated with beta = 200.0 in "full" mode on query vectors Q
-    Then the negated Hopfield energy score must match -max_i cos(x_i, q) within 0.02 absolute tolerance
+    Then energy_score(Q) must match -max_i cos(x_i, q) within 0.02 absolute tolerance
+    And score_samples(Q) must equal -energy_score(Q) and decision_function(Q) must equal score_samples(Q) - offset_
 
   Scenario: Simplified Hopfield Energy (SHE) class prototype compression
     Given labeled in-distribution training samples (X, y) across K classes

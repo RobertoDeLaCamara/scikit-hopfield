@@ -118,10 +118,10 @@ def test_bam_gap_margin_parameter_is_explicit_and_validated() -> None:
     assert not bool(known_gap["is_gap"][0])
     assert bool(unknown_gap["is_gap"][0])
 
-    # Validation on init and set_params
+    # Validation happens in fit() per scikit-learn BaseEstimator contract
     with pytest.raises(ValueError, match="gap_margin"):
-        HopfieldBAM(gap_margin=-0.01)
+        HopfieldBAM(gap_margin=-0.01).fit(X_notes, Y_books)
     with pytest.raises(ValueError, match="gap_margin"):
-        HopfieldBAM(gap_margin=float("nan"))
+        HopfieldBAM(gap_margin=float("nan")).fit(X_notes, Y_books)
     with pytest.raises(ValueError, match="gap_margin"):
-        bam_default.set_params(gap_margin=-0.5)
+        bam_default.set_params(gap_margin=-0.5).fit(X_notes, Y_books)

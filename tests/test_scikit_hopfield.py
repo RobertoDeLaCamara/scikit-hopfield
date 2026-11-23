@@ -26,36 +26,46 @@ class TestBOLT001HopfieldOOD(unittest.TestCase):
         self.X_ood = rng.normal(loc=[0.0] * 10 + [1.0] * 6, scale=0.05, size=(15, 16))
 
     def test_high_beta_asymptotic_1nn_limit(self) -> None:
-        """BOLT-001 Scenario 1: As beta -> infinity, score converges to -max_i cos(x_i, q)."""
+        """BOLT-001 Scenario 1: As beta -> infinity, energy_score converges to -max_i cos."""
         det = HopfieldOOD(beta=250.0, mode="full", normalize=True).fit(self.X_train)
-        scores = det.decision_function(self.X_ood)
+        energies = det.energy_score(self.X_ood)
 
         X_norm = self.X_train / np.linalg.norm(self.X_train, axis=1, keepdims=True)
         Q_norm = self.X_ood / np.linalg.norm(self.X_ood, axis=1, keepdims=True)
         exact_neg_1nn = -np.max(Q_norm @ X_norm.T, axis=1)
 
-        np.testing.assert_allclose(scores, exact_neg_1nn, atol=0.025)
+        np.testing.assert_allclose(energies, exact_neg_1nn, atol=0.025)
+        np.testing.assert_allclose(det.score_samples(self.X_ood), -energies)
+        np.testing.assert_allclose(
+            det.decision_function(self.X_ood),
+            det.score_samples(self.X_ood) - det.offset_,
+        )
 
     def test_she_mode_compresses_to_class_centroids_and_separates_ood(self) -> None:
         """BOLT-001 Scenario 2: SHE stores K class centroids and separates ID from OOD."""
         det = HopfieldOOD(beta=8.0, mode="she", contamination=0.1).fit(self.X_train, self.y_train)
         self.assertEqual(det.memories_.shape, (3, 16))
 
-        id_scores = det.decision_function(self.X_train)
-        ood_scores = det.decision_function(self.X_ood)
-        self.assertGreater(float(np.min(ood_scores)), float(np.max(id_scores)))
+        id_energies = det.energy_score(self.X_train)
+        ood_energies = det.energy_score(self.X_ood)
+        self.assertGreater(float(np.min(ood_energies)), float(np.max(id_energies)))
 
+        # scikit-learn OutlierMixin convention: decision_function higher = more normal
+        self.assertGreater(
+            float(np.min(det.decision_function(self.X_train))),
+            float(np.max(det.decision_function(self.X_ood))),
+        )
         preds_ood = det.predict(self.X_ood)
         self.assertTrue(np.all(preds_ood == -1))
 
     def test_reclag_mode_collapses_low_similarity_ood_to_origin_attractor(self) -> None:
         """BOLT-001 Scenario 3: Rectified Lagrangian zeroes out similarities below tau_rect."""
         det = HopfieldOOD(beta=10.0, mode="reclag", tau_rect=0.6).fit(self.X_train)
-        id_scores = det.decision_function(self.X_train[:10])
-        ood_scores = det.decision_function(self.X_ood)
+        id_energies = det.energy_score(self.X_train[:10])
+        ood_energies = det.energy_score(self.X_ood)
 
-        np.testing.assert_allclose(ood_scores, np.zeros_like(ood_scores), atol=1e-7)
-        self.assertTrue(np.all(id_scores < -0.25))
+        np.testing.assert_allclose(ood_energies, np.zeros_like(ood_energies), atol=1e-7)
+        self.assertTrue(np.all(id_energies < -0.25))
 
     def test_contrastive_outlier_exposure_with_auxiliary_outliers(self) -> None:
         """BOLT-001 Scenario 4: Contrastive outlier exposure increases separation via X_outliers."""
@@ -63,12 +73,12 @@ class TestBOLT001HopfieldOOD(unittest.TestCase):
         det_oe = HopfieldOOD(beta=8.0, mode="full").fit(
             self.X_train, X_outliers=self.X_ood[:5]
         )
-        mean_ood_base = float(np.mean(det_base.decision_function(self.X_ood[5:])))
-        mean_id_base = float(np.mean(det_base.decision_function(self.X_train)))
+        mean_ood_base = float(np.mean(det_base.energy_score(self.X_ood[5:])))
+        mean_id_base = float(np.mean(det_base.energy_score(self.X_train)))
         gap_base = mean_ood_base - mean_id_base
 
-        mean_ood_oe = float(np.mean(det_oe.decision_function(self.X_ood[5:])))
-        mean_id_oe = float(np.mean(det_oe.decision_function(self.X_train)))
+        mean_ood_oe = float(np.mean(det_oe.energy_score(self.X_ood[5:])))
+        mean_id_oe = float(np.mean(det_oe.energy_score(self.X_train)))
         gap_oe = mean_ood_oe - mean_id_oe
         self.assertGreater(gap_oe, gap_base)
 

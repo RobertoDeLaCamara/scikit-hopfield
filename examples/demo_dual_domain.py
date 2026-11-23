@@ -28,8 +28,8 @@ def run_ids_novelty_demo() -> None:
 
     for mode in ("she", "full", "reclag"):
         det = HopfieldOOD(beta=12.0, mode=mode, tau_rect=0.5, contamination=0.05).fit(X_id, y_id)
-        id_mean = float(np.mean(det.decision_function(X_id)))
-        ood_mean = float(np.mean(det.decision_function(X_zeroday)))
+        id_mean = float(np.mean(det.energy_score(X_id)))
+        ood_mean = float(np.mean(det.energy_score(X_zeroday)))
         tpr = float(np.mean(det.predict(X_zeroday) == -1)) * 100.0
         print(
             f"  Mode={mode:6s} | ID mean energy={id_mean:+.4f} | "

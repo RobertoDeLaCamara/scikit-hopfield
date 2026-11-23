@@ -24,7 +24,8 @@ from scikit_hopfield import HopfieldOOD, HopfieldMetastableCluster, HopfieldBAM
 
 # 1. Out-of-Distribution / Novelty Detection with Rectified Lagrangian (AAAI 2025)
 det = HopfieldOOD(beta=12.0, mode="reclag", tau_rect=0.5, contamination=0.05).fit(X_train, y_train)
-scores = det.decision_function(X_test)
+scores = det.decision_function(X_test)   # scikit-learn convention: >= 0 inlier, < 0 outlier
+energies = det.energy_score(X_test)      # raw Hopfield energy: higher = more anomalous / OOD
 preds = det.predict(X_test)              # 1 = inlier, -1 = outlier
 attribution = det.explain(X_test, top_k=3)
 

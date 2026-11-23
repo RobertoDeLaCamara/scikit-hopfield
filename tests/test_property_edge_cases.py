@@ -118,7 +118,7 @@ def test_extreme_beta_and_zero_norm_vectors_numerical_stability(beta: float) -> 
 
     ood = HopfieldOOD(beta=beta, mode="full").fit(X_mixed)
     scores = ood.decision_function(Q_mixed)
-    preds = ood.predict(Q_mixed[0])  # 1D query edge case
+    preds = ood.predict(Q_mixed[0:1])
     assert np.all(np.isfinite(scores))
     assert preds.shape == (1,)
 

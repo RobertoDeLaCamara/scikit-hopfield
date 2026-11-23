@@ -1,4 +1,4 @@
-# Check the fast path equals the library's own HopfieldOOD.decision_function (full + reclag).
+# Check the fast path equals the library's own HopfieldOOD.energy_score (full + reclag).
 import numpy as np
 from common import *
 
@@ -9,8 +9,8 @@ M = rng.normal(size=(300, 32)).astype(np.float32); Q = rng.normal(size=(200, 32)
 Mn, Qn = nrm(M), nrm(Q)
 fast = hopfield_scores(Qn, Mn)
 for b in (2, 16):
-    lib = HopfieldOOD(beta=b, mode="full").fit(M).decision_function(Q)
+    lib = HopfieldOOD(beta=b, mode="full").fit(M).energy_score(Q)
     print("full b", b, "max|diff|", np.abs(lib - fast[f"full_b{b}"]).max())
 for t in (0.3, 0.5):
-    lib = HopfieldOOD(beta=8, mode="reclag", tau_rect=t).fit(M).decision_function(Q)
+    lib = HopfieldOOD(beta=8, mode="reclag", tau_rect=t).fit(M).energy_score(Q)
     print("reclag t", t, "max|diff|", np.abs(lib - fast[f"reclag_b8_t{t}"]).max())

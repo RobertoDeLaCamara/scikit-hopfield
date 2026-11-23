@@ -36,8 +36,8 @@ from scikit_hopfield import HopfieldOOD
 
 rng = np.random.default_rng(1); M0 = rng.normal(size=(300, 32)).astype(np.float32); Q0 = rng.normal(size=(100, 32)).astype(np.float32)
 fast = scores_torch(nrm(Q0), nrm(M0))
-d1 = np.abs(HopfieldOOD(beta=8, mode="full").fit(M0).decision_function(Q0) - fast["full_b8"]).max()
-d2 = np.abs(HopfieldOOD(beta=8, mode="reclag", tau_rect=0.3).fit(M0).decision_function(Q0) - fast["reclag_b8_t0.3"]).max()
+d1 = np.abs(HopfieldOOD(beta=8, mode="full").fit(M0).energy_score(Q0) - fast["full_b8"]).max()
+d2 = np.abs(HopfieldOOD(beta=8, mode="reclag", tau_rect=0.3).fit(M0).energy_score(Q0) - fast["reclag_b8_t0.3"]).max()
 print(f"lib check: full {d1:.1e}  reclag {d2:.1e}", flush=True); assert d1 < 1e-4 and d2 < 1e-4
 
 D = load(S); Etr, _, ytr = D["train"]
