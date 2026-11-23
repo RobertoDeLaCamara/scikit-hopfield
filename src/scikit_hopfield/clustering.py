@@ -6,14 +6,15 @@ into metastable attractors at inverse temperature `beta`.
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
+from sklearn.base import BaseEstimator, ClusterMixin
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.utils.validation import validate_data
 
-from .energy import hopfield_update_step, l2_normalize, validate_array, validate_beta
+from .energy import hopfield_update_step, l2_normalize, validate_beta
 
 
-class HopfieldMetastableCluster:
+class HopfieldMetastableCluster(ClusterMixin, BaseEstimator):
     """
     Clustering estimator based on Metastable States of Modern Hopfield Networks.
     """
@@ -26,71 +27,81 @@ class HopfieldMetastableCluster:
         merge_tol: float = 1e-2,
         normalize: bool = True,
     ) -> None:
-        self.beta = validate_beta(beta)
-        self.max_iter = int(max_iter)
-        self.tol = float(tol)
-        self.merge_tol = float(merge_tol)
-        self.normalize = bool(normalize)
+        self.beta = beta
+        self.max_iter = max_iter
+        self.tol = tol
+        self.merge_tol = merge_tol
+        self.normalize = normalize
 
-    def get_params(self, deep: bool = True) -> dict[str, Any]:
-        """Get parameters for this estimator (scikit-learn BaseEstimator protocol)."""
-        return {
-            "beta": self.beta,
-            "max_iter": self.max_iter,
-            "tol": self.tol,
-            "merge_tol": self.merge_tol,
-            "normalize": self.normalize,
-        }
+    def _validate_hyperparams(self) -> tuple[float, int, float, float]:
+        beta = validate_beta(self.beta)
+        max_iter = int(self.max_iter)
+        if max_iter < 1:
+            raise ValueError(f"max_iter must be >= 1, got {self.max_iter!r}.")
+        tol = float(self.tol)
+        if not np.isfinite(tol) or tol < 0.0:
+            raise ValueError(f"tol must be finite and >= 0.0, got {self.tol!r}.")
+        merge_tol = float(self.merge_tol)
+        if not np.isfinite(merge_tol) or merge_tol < 0.0:
+            raise ValueError(f"merge_tol must be finite and >= 0.0, got {self.merge_tol!r}.")
+        return beta, max_iter, tol, merge_tol
 
-    def set_params(self, **params: Any) -> HopfieldMetastableCluster:
-        """Set parameters for this estimator."""
-        for k, v in params.items():
-            if not hasattr(self, k):
-                raise ValueError(f"Invalid parameter {k!r} for HopfieldMetastableCluster.")
-            setattr(self, k, v)
-        self.beta = validate_beta(self.beta)
-        return self
-
-    def _evolve_states(self, memories: np.ndarray, states: np.ndarray, beta: float) -> np.ndarray:
+    def _evolve_states(
+        self,
+        memories: np.ndarray,
+        states: np.ndarray,
+        beta: float,
+        max_iter: int,
+        tol: float,
+    ) -> tuple[np.ndarray, int]:
         curr = states.copy()
-        for _ in range(self.max_iter):
+        n_iter = 0
+        for step in range(1, max_iter + 1):
+            n_iter = step
             nxt = hopfield_update_step(memories, curr, beta=beta)
             if self.normalize:
                 nxt = l2_normalize(nxt)
-            if np.max(np.linalg.norm(nxt - curr, axis=1)) < self.tol:
+            if np.max(np.linalg.norm(nxt - curr, axis=1)) < tol:
                 curr = nxt
                 break
             curr = nxt
-        return curr
+        return curr, n_iter
 
     def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> HopfieldMetastableCluster:
-        X_proc = l2_normalize(X) if self.normalize else validate_array(X)
+        beta, max_iter, tol, merge_tol = self._validate_hyperparams()
+        X_val = validate_data(
+            self, X, dtype=np.float64, ensure_min_samples=1, ensure_min_features=1
+        )
+        X_proc = l2_normalize(X_val) if self.normalize else X_val
         self.memories_ = X_proc
 
-        attractors = self._evolve_states(self.memories_, X_proc, beta=self.beta)
+        attractors, n_iter = self._evolve_states(
+            self.memories_, X_proc, beta=beta, max_iter=max_iter, tol=tol
+        )
+        self.n_iter_ = n_iter
         self.sample_attractors_ = attractors
 
-        centers: list[np.ndarray] = []
-        labels = np.full(X_proc.shape[0], -1, dtype=int)
+        if attractors.shape[0] == 1:
+            labels = np.array([0], dtype=int)
+            centers = attractors.copy()
+        else:
+            # Order-independent hierarchical merging of converged attractors.
+            threshold = max(merge_tol, float(np.finfo(float).eps))
+            agg = AgglomerativeClustering(
+                n_clusters=None,
+                distance_threshold=threshold,
+                linkage="complete",
+            )
+            labels = agg.fit_predict(attractors).astype(int)
+            n_clusters = int(np.max(labels)) + 1
+            centers = np.vstack(
+                [np.mean(attractors[labels == c], axis=0) for c in range(n_clusters)]
+            )
 
-        for i, vec in enumerate(attractors):
-            assigned = False
-            for c_idx, center in enumerate(centers):
-                if np.linalg.norm(vec - center) <= self.merge_tol:
-                    labels[i] = c_idx
-                    assigned = True
-                    break
-            if not assigned:
-                labels[i] = len(centers)
-                centers.append(vec.copy())
-
-        self.cluster_centers_ = np.vstack(centers)
+        self.cluster_centers_ = centers
         self.labels_ = labels
-        self.n_clusters_ = len(centers)
+        self.n_clusters_ = int(centers.shape[0])
         return self
-
-    def fit_predict(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
-        return self.fit(X, y).labels_
 
     def bifurcation_spectrum(self, X: np.ndarray, betas: list[float]) -> dict[float, int]:
         """Computes the number of emergent metastable clusters across a spectrum of beta values."""

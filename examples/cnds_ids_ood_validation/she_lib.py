@@ -17,7 +17,7 @@ for c in range(1, 10):
     for b in BETAS:
         det = HopfieldOOD(beta=b, mode="she").fit(M, ym)          # the library's own SHE mode (one prototype per remaining class)
         for sp in ("val", "test"):
-            E, _, y = D[sp]; a = roc_auc_score((y == c).astype(int), det.decision_function(E)); R[b][sp].append(a)
+            E, _, y = D[sp]; a = roc_auc_score((y == c).astype(int), det.energy_score(E)); R[b][sp].append(a)
             if sp == "test": per[b][LAB[c]] = round(a, 3)
 print("lib HopfieldOOD(mode='she') LOACO mean AUROC")
 for b in BETAS: print(f"beta={b:<4d} val {np.mean(R[b]['val']):.4f}  test {np.mean(R[b]['test']):.4f}")

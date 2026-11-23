@@ -90,6 +90,22 @@ def hopfield_update_step(
     return weights @ validate_array(memories, "memories")
 
 
+def reclag_score_from_sim(
+    sim: np.ndarray,
+    beta: float = 8.0,
+    tau_rect: float = 0.5,
+) -> np.ndarray:
+    """Computes Rectified Lagrangian anomaly scores directly from a similarity matrix."""
+    b = validate_beta(beta)
+    rect = np.maximum(0.0, sim - float(tau_rect))
+    max_rect = np.max(rect, axis=1)
+    active = max_rect > 0.0
+    scores = np.zeros(sim.shape[0], dtype=float)
+    if np.any(active):
+        scores[active] = -logsumexp_scaled(rect[active], beta=b)
+    return scores
+
+
 def reclag_score(
     memories: np.ndarray,
     queries: np.ndarray,
@@ -105,10 +121,4 @@ def reclag_score(
     mem = validate_array(memories, "memories")
     qry = validate_array(queries, "queries")
     sim = qry @ mem.T
-    rect = np.maximum(0.0, sim - float(tau_rect))
-    max_rect = np.max(rect, axis=1)
-    active = max_rect > 0.0
-    scores = np.zeros(qry.shape[0], dtype=float)
-    if np.any(active):
-        scores[active] = -logsumexp_scaled(rect[active], beta=b)
-    return scores
+    return reclag_score_from_sim(sim, beta=b, tau_rect=tau_rect)

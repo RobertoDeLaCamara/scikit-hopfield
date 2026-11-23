@@ -1,12 +1,13 @@
 Feature: Modern Hopfield Energy Out-of-Distribution Detector (BOLT-001)
   As an ML / SecOps Engineer
-  I want a scikit-learn/PyOD compatible HopfieldOOD estimator supporting the continuous beta-dial, SHE, Hopfield Boosting, and Rectified Lagrangian (RecLag)
+  I want a scikit-learn/PyOD compatible HopfieldOOD estimator supporting the continuous beta-dial, SHE, contrastive outlier exposure (X_outliers), and Rectified Lagrangian (RecLag)
   So that I can detect novel OOD patterns in embeddings and attribute each alert to its closest stored memories.
 
   Scenario: High-beta asymptotic convergence to 1-Nearest Neighbor cosine similarity
     Given an L2-normalized memory matrix X of in-distribution patterns
     When HopfieldOOD is evaluated with beta = 200.0 in "full" mode on query vectors Q
-    Then the negated Hopfield energy score must match -max_i cos(x_i, q) within 0.02 absolute tolerance
+    Then energy_score(Q) must match -max_i cos(x_i, q) within 0.02 absolute tolerance
+    And score_samples(Q) must equal -energy_score(Q) and decision_function(Q) must equal score_samples(Q) - offset_
 
   Scenario: Simplified Hopfield Energy (SHE) class prototype compression
     Given labeled in-distribution training samples (X, y) across K classes
@@ -19,10 +20,10 @@ Feature: Modern Hopfield Energy Out-of-Distribution Detector (BOLT-001)
     When HopfieldOOD is fitted with mode = "reclag" and tau_rect = 0.5
     Then OOD queries with all similarities below tau_rect must collapse to zero rectified activation and receive maximum anomaly score
 
-  Scenario: Hopfield Boosting with auxiliary outlier exposure
+  Scenario: Contrastive outlier exposure via auxiliary X_outliers
     Given in-distribution patterns X_id and auxiliary outlier patterns X_ood
-    When HopfieldOOD is fitted with X_outliers = X_ood
-    Then the boosting energy score must penalize proximity to X_ood while rewarding proximity to X_id
+    When HopfieldOOD is fitted with mode = "full" and X_outliers = X_ood
+    Then the contrastive energy score must penalize proximity to X_ood while rewarding proximity to X_id
 
   Scenario: Explainable associative memory attribution
     Given a fitted HopfieldOOD detector

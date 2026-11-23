@@ -1,6 +1,6 @@
 """
 BOLT-001: Modern Hopfield Energy Out-of-Distribution & Novelty Detector (`HopfieldOOD`).
-Compatible with scikit-learn (BaseEstimator, OutlierMixin) and PyOD conventions.
+Compatible with scikit-learn (`BaseEstimator`, `OutlierMixin`).
 """
 
 from __future__ import annotations
@@ -8,22 +8,32 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from sklearn.base import BaseEstimator, OutlierMixin
+from sklearn.cluster import KMeans
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 from .energy import (
     attention_weights,
     l2_normalize,
     logsumexp_scaled,
-    reclag_score,
-    validate_array,
+    reclag_score_from_sim,
     validate_beta,
 )
 
-VALID_OOD_MODES = {"full", "she", "kmeans", "reclag", "boosting"}
+VALID_OOD_MODES = {"full", "she", "kmeans", "reclag"}
+_SELF_MEMORY_MODES = {"full", "reclag"}
 
 
-class HopfieldOOD:
+class HopfieldOOD(OutlierMixin, BaseEstimator):
     """
     Out-of-Distribution (OOD) and Novelty Detector based on Modern Hopfield Energy.
+
+    Scoring conventions follow `scikit-learn` (`OutlierMixin`):
+    - `energy_score(X)`: raw Hopfield anomaly energy (higher = more anomalous / OOD).
+    - `score_samples(X)`: opposite of anomaly energy (`-energy_score(X)`, higher = more normal).
+    - `decision_function(X)`: shifted normality score (`score_samples(X) - offset_`;
+      `>= 0` inlier, `< 0` outlier).
+    - `predict(X)` / `fit_predict(X)`: `1` for inliers, `-1` for outliers.
     """
 
     def __init__(
@@ -34,49 +44,83 @@ class HopfieldOOD:
         n_prototypes: int = 32,
         contamination: float = 0.05,
         normalize: bool = True,
+        random_state: int | np.random.RandomState | None = None,
     ) -> None:
-        self.beta = validate_beta(beta)
-        mode_clean = mode.lower()
-        if mode_clean not in VALID_OOD_MODES:
+        self.beta = beta
+        self.mode = mode
+        self.tau_rect = tau_rect
+        self.n_prototypes = n_prototypes
+        self.contamination = contamination
+        self.normalize = normalize
+        self.random_state = random_state
+
+    def _validate_hyperparams(self) -> tuple[float, str, float, int, float]:
+        beta = validate_beta(self.beta)
+        if not isinstance(self.mode, str) or self.mode.lower() not in VALID_OOD_MODES:
             modes = sorted(VALID_OOD_MODES)
-            raise ValueError(f"Unsupported mode {mode!r}; expected one of {modes}.")
-        if not (0.0 < float(contamination) < 0.5):
-            raise ValueError(f"contamination must be in (0.0, 0.5), got {contamination!r}.")
-        self.mode = mode_clean
-        self.tau_rect = float(tau_rect)
-        self.n_prototypes = int(n_prototypes)
-        self.contamination = float(contamination)
-        self.normalize = bool(normalize)
+            raise ValueError(f"Unsupported mode {self.mode!r}; expected one of {modes}.")
+        mode = self.mode.lower()
 
-    def get_params(self, deep: bool = True) -> dict[str, Any]:
-        """Get parameters for this estimator (scikit-learn BaseEstimator protocol)."""
-        return {
-            "beta": self.beta,
-            "mode": self.mode,
-            "tau_rect": self.tau_rect,
-            "n_prototypes": self.n_prototypes,
-            "contamination": self.contamination,
-            "normalize": self.normalize,
-        }
+        contamination = float(self.contamination)
+        if not np.isfinite(contamination) or not (0.0 < contamination < 0.5):
+            raise ValueError(
+                f"contamination must be in (0.0, 0.5), got {self.contamination!r}."
+            )
 
-    def set_params(self, **params: Any) -> HopfieldOOD:
-        """Set the parameters of this estimator (scikit-learn BaseEstimator protocol)."""
-        for k, v in params.items():
-            if not hasattr(self, k):
-                raise ValueError(f"Invalid parameter {k!r} for HopfieldOOD.")
-            setattr(self, k, v)
-        self.beta = validate_beta(self.beta)
-        if self.mode not in VALID_OOD_MODES:
-            raise ValueError(f"Unsupported mode {self.mode!r}.")
-        return self
+        n_prototypes = int(self.n_prototypes)
+        if n_prototypes < 1:
+            raise ValueError(f"n_prototypes must be >= 1, got {self.n_prototypes!r}.")
 
-    def _check_is_fitted(self) -> None:
-        if not hasattr(self, "memories_"):
-            raise ValueError("This HopfieldOOD instance is not fitted yet. Call 'fit' first.")
+        tau_rect = float(self.tau_rect)
+        if not np.isfinite(tau_rect):
+            raise ValueError(f"tau_rect must be finite, got {self.tau_rect!r}.")
 
-    def _prep(self, X: np.ndarray) -> np.ndarray:
-        arr = validate_array(X)
-        return l2_normalize(arr) if self.normalize else arr
+        return beta, mode, tau_rect, n_prototypes, contamination
+
+    def _normalize_if_enabled(self, X: np.ndarray) -> np.ndarray:
+        return l2_normalize(X) if self.normalize else X
+
+    def _energy_from_proc(self, Q: np.ndarray) -> np.ndarray:
+        if self._mode_ == "reclag":
+            sim = Q @ self.memories_.T
+            return reclag_score_from_sim(sim, beta=self._beta_, tau_rect=self._tau_rect_)
+
+        sim_id = Q @ self.memories_.T
+        score_id = -logsumexp_scaled(sim_id, beta=self._beta_)
+
+        if self.outlier_memories_ is not None:
+            sim_ood = Q @ self.outlier_memories_.T
+            score_ood = logsumexp_scaled(sim_ood, beta=self._beta_)
+            return score_id + score_ood
+
+        return score_id
+
+    def _calibration_energies(self, X_proc: np.ndarray) -> np.ndarray:
+        """
+        Computes in-distribution anomaly energies for threshold calibration.
+        For modes storing raw training patterns (`full`, `reclag`), uses exact
+        leave-one-out (excluding self-similarity on the diagonal) so the threshold
+        is not biased downward by exact self-matches.
+        """
+        n_samples = X_proc.shape[0]
+        if self._mode_ not in _SELF_MEMORY_MODES or n_samples <= 1:
+            return self._energy_from_proc(X_proc)
+
+        sim_id = X_proc @ self.memories_.T
+        off_diag = ~np.eye(n_samples, dtype=bool)
+        sim_id_loo = sim_id[off_diag].reshape(n_samples, n_samples - 1)
+
+        if self._mode_ == "reclag":
+            return reclag_score_from_sim(
+                sim_id_loo, beta=self._beta_, tau_rect=self._tau_rect_
+            )
+
+        score_id = -logsumexp_scaled(sim_id_loo, beta=self._beta_)
+        if self.outlier_memories_ is not None:
+            sim_ood = X_proc @ self.outlier_memories_.T
+            score_ood = logsumexp_scaled(sim_ood, beta=self._beta_)
+            return score_id + score_ood
+        return score_id
 
     def fit(
         self,
@@ -84,72 +128,97 @@ class HopfieldOOD:
         y: np.ndarray | None = None,
         X_outliers: np.ndarray | None = None,
     ) -> HopfieldOOD:
-        X_proc = self._prep(X)
+        beta, mode, tau_rect, n_prototypes, contamination = self._validate_hyperparams()
+        X_val = validate_data(
+            self, X, dtype=np.float64, ensure_min_samples=1, ensure_min_features=1
+        )
+        X_proc = self._normalize_if_enabled(X_val)
 
-        if self.mode == "she":
+        self._beta_ = beta
+        self._mode_ = mode
+        self._tau_rect_ = tau_rect
+
+        if mode == "she":
             if y is None:
                 prototypes = np.mean(X_proc, axis=0, keepdims=True)
             else:
-                labels = np.unique(y)
-                prototypes = np.vstack([np.mean(X_proc[y == c], axis=0) for c in labels])
-            self.memories_ = l2_normalize(prototypes) if self.normalize else prototypes
-        elif self.mode == "kmeans":
-            k = min(self.n_prototypes, X_proc.shape[0])
-            rng = np.random.default_rng(42)
-            idx = rng.choice(X_proc.shape[0], size=k, replace=False)
-            centers = X_proc[idx].copy()
-            for _ in range(15):
-                dists = np.linalg.norm(X_proc[:, None, :] - centers[None, :, :], axis=2)
-                assign = np.argmin(dists, axis=1)
-                for j in range(k):
-                    mask = assign == j
-                    if np.any(mask):
-                        centers[j] = np.mean(X_proc[mask], axis=0)
-            self.memories_ = l2_normalize(centers) if self.normalize else centers
+                y_arr = np.asarray(y)
+                if y_arr.shape[0] != X_proc.shape[0]:
+                    raise ValueError(
+                        f"y length ({y_arr.shape[0]}) must match X rows ({X_proc.shape[0]})."
+                    )
+                labels = np.unique(y_arr)
+                prototypes = np.vstack([np.mean(X_proc[y_arr == c], axis=0) for c in labels])
+            self.memories_ = self._normalize_if_enabled(prototypes)
+        elif mode == "kmeans":
+            n_distinct = np.unique(X_proc, axis=0).shape[0]
+            k = min(n_prototypes, X_proc.shape[0], n_distinct)
+            if k == 1:
+                centers = np.mean(X_proc, axis=0, keepdims=True)
+            else:
+                km = KMeans(
+                    n_clusters=k,
+                    init="k-means++",
+                    n_init="auto",
+                    random_state=self.random_state,
+                )
+                km.fit(X_proc)
+                centers = km.cluster_centers_
+            self.memories_ = self._normalize_if_enabled(centers)
         else:
             self.memories_ = X_proc
 
         self.outlier_memories_: np.ndarray | None = None
         if X_outliers is not None:
-            self.outlier_memories_ = self._prep(X_outliers)
+            if mode == "reclag":
+                raise ValueError(
+                    "X_outliers is not supported when mode='reclag'; "
+                    "use mode='full', 'she', or 'kmeans'."
+                )
+            X_out_val = validate_data(
+                self, X_outliers, dtype=np.float64, reset=False, ensure_min_samples=1
+            )
+            self.outlier_memories_ = self._normalize_if_enabled(X_out_val)
 
-        train_scores = self.decision_function(X)
-        self.threshold_ = float(np.quantile(train_scores, 1.0 - self.contamination))
+        train_energies = self._calibration_energies(X_proc)
+        self.threshold_ = float(np.quantile(train_energies, 1.0 - contamination))
+        self.offset_ = -self.threshold_
         return self
 
+    def energy_score(self, X: np.ndarray) -> np.ndarray:
+        """Computes raw Hopfield anomaly energy for X (higher = more anomalous / OOD)."""
+        check_is_fitted(self, ["memories_", "threshold_", "offset_"])
+        Q = validate_data(self, X, dtype=np.float64, reset=False, ensure_min_samples=1)
+        Q_proc = self._normalize_if_enabled(Q)
+        return self._energy_from_proc(Q_proc)
+
+    def score_samples(self, X: np.ndarray) -> np.ndarray:
+        """Opposite of anomaly energy (higher = more normal, scikit-learn OutlierMixin)."""
+        return -self.energy_score(X)
+
     def decision_function(self, X: np.ndarray) -> np.ndarray:
-        """Computes anomaly scores for X (higher = more anomalous / higher energy)."""
-        self._check_is_fitted()
-        Q = self._prep(X)
-        if self.mode == "reclag":
-            return reclag_score(self.memories_, Q, beta=self.beta, tau_rect=self.tau_rect)
-
-        sim_id = Q @ self.memories_.T
-        score_id = -logsumexp_scaled(sim_id, beta=self.beta)
-
-        if self.outlier_memories_ is not None:
-            sim_ood = Q @ self.outlier_memories_.T
-            score_ood = logsumexp_scaled(sim_ood, beta=self.beta)
-            return score_id + score_ood
-
-        return score_id
+        """
+        Shifted normality score (`score_samples(X) - offset_`).
+        Negative scores indicate outliers; non-negative scores indicate inliers.
+        """
+        return self.score_samples(X) - self.offset_
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Predicts inlier (`1`) vs outlier (`-1`) following scikit-learn OutlierMixin."""
-        scores = self.decision_function(X)
-        return np.where(scores > self.threshold_, -1, 1)
+        return np.where(self.decision_function(X) < 0.0, -1, 1)
 
     def explain(self, X: np.ndarray, top_k: int = 3) -> dict[str, Any]:
-        """Returns associative memory attribution (top-k indices and weights)."""
-        self._check_is_fitted()
-        Q = self._prep(X)
-        weights = attention_weights(self.memories_, Q, beta=self.beta)
+        """Returns associative memory attribution (top-k indices, weights, and energy)."""
+        check_is_fitted(self, ["memories_", "threshold_", "offset_"])
+        Q = validate_data(self, X, dtype=np.float64, reset=False, ensure_min_samples=1)
+        Q_proc = self._normalize_if_enabled(Q)
+        weights = attention_weights(self.memories_, Q_proc, beta=self._beta_)
         k = min(top_k, self.memories_.shape[0])
         top_idx = np.argsort(-weights, axis=1)[:, :k]
         top_w = np.take_along_axis(weights, top_idx, axis=1)
-        scores = self.decision_function(X)
+        energies = self._energy_from_proc(Q_proc)
         return {
-            "anomaly_scores": scores,
+            "anomaly_scores": energies,
             "top_indices": top_idx,
             "top_weights": top_w,
             "full_weights_sum": np.sum(weights, axis=1),
