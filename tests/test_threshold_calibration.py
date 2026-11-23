@@ -26,7 +26,6 @@ def _sample_id_clusters(
     [
         ("full", {}),
         ("reclag", {"tau_rect": 0.4}),
-        ("boosting", {}),
     ],
 )
 def test_ood_unseen_id_false_positive_rate_matches_contamination(
@@ -55,7 +54,7 @@ def test_ood_unseen_id_false_positive_rate_matches_contamination(
     )
 
 
-def test_ood_boosting_with_outliers_unseen_id_calibration() -> None:
+def test_ood_full_with_outliers_unseen_id_calibration() -> None:
     """LOO calibration must preserve contamination target when X_outliers is provided."""
     rng = np.random.default_rng(2026)
     X_train = _sample_id_clusters(rng, n_per_cluster=200)
@@ -65,18 +64,31 @@ def test_ood_boosting_with_outliers_unseen_id_calibration() -> None:
     contamination = 0.05
     det = HopfieldOOD(
         beta=10.0,
-        mode="boosting",
+        mode="full",
         contamination=contamination,
     ).fit(X_train, X_outliers=X_outliers)
 
     fpr = float(np.mean(det.predict(X_test_id) == -1))
     assert 0.025 <= fpr <= 0.085, (
-        f"boosting with X_outliers produced unseen-ID FPR={fpr:.3f} "
+        f"full with X_outliers produced unseen-ID FPR={fpr:.3f} "
         f"for contamination={contamination}"
     )
 
 
-@pytest.mark.parametrize("mode", ["full", "reclag", "boosting"])
+def test_ood_removed_boosting_mode_and_reclag_outliers_rejected() -> None:
+    """Removed 'boosting' mode and unsupported X_outliers in 'reclag' must raise ValueError."""
+    rng = np.random.default_rng(7)
+    X_id = rng.normal(size=(10, 4))
+    X_out = rng.normal(loc=3.0, size=(3, 4))
+
+    with pytest.raises(ValueError, match="Unsupported mode"):
+        HopfieldOOD(mode="boosting").fit(X_id)
+
+    with pytest.raises(ValueError, match="X_outliers is not supported"):
+        HopfieldOOD(mode="reclag").fit(X_id, X_outliers=X_out)
+
+
+@pytest.mark.parametrize("mode", ["full", "reclag"])
 def test_ood_single_sample_fit_handles_loo_gracefully(mode: str) -> None:
     """Fitting with a single training sample must not fail or yield NaN/Inf thresholds."""
     X_single = np.array([[1.0, 0.0, 0.0, 0.0]], dtype=float)

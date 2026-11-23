@@ -4,7 +4,7 @@ This repository is governed by **BADSFA (Behavior-Agent-Driven Software Factory 
 
 ## 1. Domain & Mathematical Invariants
 
-`scikit-hopfield` provides `scikit-learn` and `PyOD` compatible estimators built on **Modern Continuous Hopfield Networks** (Ramsauer et al., ICLR 2021; SHE, ICLR 2023; Hopfield Boosting, 2024; Rectified Lagrangian, AAAI 2025; Freeman & Skapura BAM):
+`scikit-hopfield` provides `scikit-learn` compatible estimators built on **Modern Continuous Hopfield Networks** (Ramsauer et al., ICLR 2021; SHE, ICLR 2023; Rectified Lagrangian, AAAI 2025; Freeman & Skapura BAM):
 
 1. **Lyapunov Monotonicity Invariant:** Every iterative state update $\boldsymbol{\xi}_{t+1} = \mathbf{X}^T \operatorname{softmax}(\beta \mathbf{X} \boldsymbol{\xi}_t)$ MUST monotonically decrease (or keep constant at fixed points) the Hopfield energy $E_\beta(\boldsymbol{\xi})$ within floating-point tolerance ($\Delta E \le 10^{-6}$).
 2. **Asymptotic $\beta$-Dial Limits:**

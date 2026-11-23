@@ -1,6 +1,6 @@
 Feature: Modern Hopfield Energy Out-of-Distribution Detector (BOLT-001)
   As an ML / SecOps Engineer
-  I want a scikit-learn/PyOD compatible HopfieldOOD estimator supporting the continuous beta-dial, SHE, Hopfield Boosting, and Rectified Lagrangian (RecLag)
+  I want a scikit-learn/PyOD compatible HopfieldOOD estimator supporting the continuous beta-dial, SHE, contrastive outlier exposure (X_outliers), and Rectified Lagrangian (RecLag)
   So that I can detect novel OOD patterns in embeddings and attribute each alert to its closest stored memories.
 
   Scenario: High-beta asymptotic convergence to 1-Nearest Neighbor cosine similarity
@@ -19,10 +19,10 @@ Feature: Modern Hopfield Energy Out-of-Distribution Detector (BOLT-001)
     When HopfieldOOD is fitted with mode = "reclag" and tau_rect = 0.5
     Then OOD queries with all similarities below tau_rect must collapse to zero rectified activation and receive maximum anomaly score
 
-  Scenario: Hopfield Boosting with auxiliary outlier exposure
+  Scenario: Contrastive outlier exposure via auxiliary X_outliers
     Given in-distribution patterns X_id and auxiliary outlier patterns X_ood
-    When HopfieldOOD is fitted with X_outliers = X_ood
-    Then the boosting energy score must penalize proximity to X_ood while rewarding proximity to X_id
+    When HopfieldOOD is fitted with mode = "full" and X_outliers = X_ood
+    Then the contrastive energy score must penalize proximity to X_ood while rewarding proximity to X_id
 
   Scenario: Explainable associative memory attribution
     Given a fitted HopfieldOOD detector

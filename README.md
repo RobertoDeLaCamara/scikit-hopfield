@@ -1,6 +1,6 @@
 # `scikit-hopfield` — Modern Continuous Hopfield Energy Estimators
 
-`scikit-learn` and `PyOD` compatible estimators built on **Modern Continuous Hopfield Networks** (Ramsauer et al., ICLR 2021; SHE, ICLR 2023; Hopfield Boosting, 2024; Rectified Lagrangian, AAAI 2025; Freeman & Skapura BAM).
+`scikit-learn` compatible estimators built on **Modern Continuous Hopfield Networks** (Ramsauer et al., ICLR 2021; SHE, ICLR 2023; Rectified Lagrangian, AAAI 2025; Freeman & Skapura BAM).
 
 Developed and governed using the **AI Software Factory (`~/claude-software-factory`)** and **BADSFA (Behavior-Agent-Driven Software Factory Architecture)** dual-harness for **Claude Code** and **Google Antigravity**.
 
@@ -10,7 +10,7 @@ Developed and governed using the **AI Software Factory (`~/claude-software-facto
 
 | Estimator | `scikit-learn` Protocol | Energy / Dynamical Regime | Target Applications |
 | :--- | :--- | :--- | :--- |
-| **`HopfieldOOD`** | `BaseEstimator`, `OutlierMixin` | Pre-iteration energy $-\beta^{-1}\operatorname{lse}(\beta, \mathbf{X}\boldsymbol{\xi})$ with continuous $\beta$-dial, `she`, `kmeans`, `boosting`, and `reclag` ($\tau_{\text{rect}}$ origin attractor). | Tabular & embedding OOD / Zero-Day detection (`FT-Transformer` IDS novelty channel, FinTech fraud, clinical abstention, LLM prompt guardrails). |
+| **`HopfieldOOD`** | `BaseEstimator`, `OutlierMixin` | Pre-iteration energy $-\beta^{-1}\operatorname{lse}(\beta, \mathbf{X}\boldsymbol{\xi})$ with continuous $\beta$-dial, `full`, `she`, `kmeans`, `reclag` ($\tau_{\text{rect}}$ origin attractor), and optional contrastive outlier exposure (`X_outliers`). | Tabular & embedding OOD / Zero-Day detection (`FT-Transformer` IDS novelty channel, FinTech fraud, clinical abstention, LLM prompt guardrails). |
 | **`HopfieldMetastableCluster`** | `BaseEstimator`, `ClusterMixin` | Iterative CCCP fixed-point updates $\boldsymbol{\xi}_{t+1} = \mathbf{X}^T\operatorname{softmax}(\beta\mathbf{X}\boldsymbol{\xi}_t)$ across $\beta$ bifurcation regimes. | Emergent hierarchical clustering without fixing $k$ a priori; multi-scale topic synthesis in knowledge graphs. |
 | **`HopfieldBAM`** | `BaseEstimator`, `TransformerMixin` | Bidirectional cross-attention reverberation ($\mathbf{A} \to \mathbf{B} \to \mathbf{A}$) + OOD Knowledge Gap thresholding. | Cross-domain associative retrieval (e.g., Obsidian Vault Notes $\leftrightarrow$ Technical Book Chunks) and unindexed topic detection. |
 

@@ -57,20 +57,20 @@ class TestBOLT001HopfieldOOD(unittest.TestCase):
         np.testing.assert_allclose(ood_scores, np.zeros_like(ood_scores), atol=1e-7)
         self.assertTrue(np.all(id_scores < -0.25))
 
-    def test_hopfield_boosting_with_auxiliary_outliers(self) -> None:
-        """BOLT-001 Scenario 4: Hopfield Boosting increases separation when X_outliers is passed."""
+    def test_contrastive_outlier_exposure_with_auxiliary_outliers(self) -> None:
+        """BOLT-001 Scenario 4: Contrastive outlier exposure increases separation via X_outliers."""
         det_base = HopfieldOOD(beta=8.0, mode="full").fit(self.X_train)
-        det_boost = HopfieldOOD(beta=8.0, mode="boosting").fit(
+        det_oe = HopfieldOOD(beta=8.0, mode="full").fit(
             self.X_train, X_outliers=self.X_ood[:5]
         )
         mean_ood_base = float(np.mean(det_base.decision_function(self.X_ood[5:])))
         mean_id_base = float(np.mean(det_base.decision_function(self.X_train)))
         gap_base = mean_ood_base - mean_id_base
 
-        mean_ood_boost = float(np.mean(det_boost.decision_function(self.X_ood[5:])))
-        mean_id_boost = float(np.mean(det_boost.decision_function(self.X_train)))
-        gap_boost = mean_ood_boost - mean_id_boost
-        self.assertGreater(gap_boost, gap_base)
+        mean_ood_oe = float(np.mean(det_oe.decision_function(self.X_ood[5:])))
+        mean_id_oe = float(np.mean(det_oe.decision_function(self.X_train)))
+        gap_oe = mean_ood_oe - mean_id_oe
+        self.assertGreater(gap_oe, gap_base)
 
     def test_explain_returns_normalized_attention_attribution(self) -> None:
         """BOLT-001 Scenario 5: Explainability returns top_k indices and weights."""

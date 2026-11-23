@@ -19,8 +19,8 @@ from .energy import (
     validate_beta,
 )
 
-VALID_OOD_MODES = {"full", "she", "kmeans", "reclag", "boosting"}
-_SELF_MEMORY_MODES = {"full", "reclag", "boosting"}
+VALID_OOD_MODES = {"full", "she", "kmeans", "reclag"}
+_SELF_MEMORY_MODES = {"full", "reclag"}
 
 
 class HopfieldOOD:
@@ -83,7 +83,7 @@ class HopfieldOOD:
     def _calibration_scores(self, X_proc: np.ndarray) -> np.ndarray:
         """
         Computes in-distribution calibration scores for threshold estimation.
-        For modes storing raw training patterns (`full`, `reclag`, `boosting`),
+        For modes storing raw training patterns (`full`, `reclag`),
         uses exact leave-one-out (excluding self-similarity on the diagonal) so
         the threshold is not biased downward by exact self-matches.
         """
@@ -138,6 +138,11 @@ class HopfieldOOD:
 
         self.outlier_memories_: np.ndarray | None = None
         if X_outliers is not None:
+            if self.mode == "reclag":
+                raise ValueError(
+                    "X_outliers is not supported when mode='reclag'; "
+                    "use mode='full', 'she', or 'kmeans'."
+                )
             self.outlier_memories_ = self._prep(X_outliers)
 
         train_scores = self._calibration_scores(X_proc)
