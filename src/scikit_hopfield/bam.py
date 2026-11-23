@@ -13,6 +13,13 @@ import numpy as np
 from .energy import l2_normalize, logsumexp_scaled, validate_array, validate_beta
 
 
+def _validate_gap_margin(gap_margin: float) -> float:
+    margin = float(gap_margin)
+    if not np.isfinite(margin) or margin < 0.0:
+        raise ValueError(f"gap_margin must be finite and >= 0.0, got {gap_margin!r}.")
+    return margin
+
+
 class HopfieldBAM:
     """
     Modern Continuous Bidirectional Associative Memory (BAM).
@@ -24,6 +31,7 @@ class HopfieldBAM:
         max_iter: int = 15,
         tol: float = 1e-6,
         gap_quantile: float = 0.98,
+        gap_margin: float = 0.05,
         normalize: bool = True,
     ) -> None:
         self.beta = validate_beta(beta)
@@ -32,6 +40,7 @@ class HopfieldBAM:
         self.max_iter = int(max_iter)
         self.tol = float(tol)
         self.gap_quantile = float(gap_quantile)
+        self.gap_margin = _validate_gap_margin(gap_margin)
         self.normalize = bool(normalize)
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
@@ -41,6 +50,7 @@ class HopfieldBAM:
             "max_iter": self.max_iter,
             "tol": self.tol,
             "gap_quantile": self.gap_quantile,
+            "gap_margin": self.gap_margin,
             "normalize": self.normalize,
         }
 
@@ -51,6 +61,7 @@ class HopfieldBAM:
                 raise ValueError(f"Invalid parameter {k!r} for HopfieldBAM.")
             setattr(self, k, v)
         self.beta = validate_beta(self.beta)
+        self.gap_margin = _validate_gap_margin(self.gap_margin)
         return self
 
     def _check_is_fitted(self) -> None:
@@ -73,9 +84,12 @@ class HopfieldBAM:
         self.X_a_ = X_a
         self.Y_b_ = Y_b
 
+        # Associative memory banks frequently store unique/orthogonal topics (1 slot per concept),
+        # so leave-one-out masking would misclassify stored topics as gaps. Use an explicit
+        # `gap_margin` buffer above the in-bank energy quantile instead.
         sim_train = self.X_a_ @ self.X_a_.T
         energies = -logsumexp_scaled(sim_train, beta=self.beta)
-        self.gap_threshold_ = float(np.quantile(energies, self.gap_quantile)) + 0.05
+        self.gap_threshold_ = float(np.quantile(energies, self.gap_quantile)) + self.gap_margin
         return self
 
     def resonate(self, query_a: np.ndarray, top_k: int = 3) -> dict[str, Any]:

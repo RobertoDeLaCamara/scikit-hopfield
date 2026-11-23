@@ -14,11 +14,13 @@ from .energy import (
     l2_normalize,
     logsumexp_scaled,
     reclag_score,
+    reclag_score_from_sim,
     validate_array,
     validate_beta,
 )
 
 VALID_OOD_MODES = {"full", "she", "kmeans", "reclag", "boosting"}
+_SELF_MEMORY_MODES = {"full", "reclag", "boosting"}
 
 
 class HopfieldOOD:
@@ -78,6 +80,31 @@ class HopfieldOOD:
         arr = validate_array(X)
         return l2_normalize(arr) if self.normalize else arr
 
+    def _calibration_scores(self, X_proc: np.ndarray) -> np.ndarray:
+        """
+        Computes in-distribution calibration scores for threshold estimation.
+        For modes storing raw training patterns (`full`, `reclag`, `boosting`),
+        uses exact leave-one-out (excluding self-similarity on the diagonal) so
+        the threshold is not biased downward by exact self-matches.
+        """
+        n_samples = X_proc.shape[0]
+        if self.mode not in _SELF_MEMORY_MODES or n_samples <= 1:
+            return self.decision_function(X_proc)
+
+        sim_id = X_proc @ self.memories_.T
+        off_diag = ~np.eye(n_samples, dtype=bool)
+        sim_id_loo = sim_id[off_diag].reshape(n_samples, n_samples - 1)
+
+        if self.mode == "reclag":
+            return reclag_score_from_sim(sim_id_loo, beta=self.beta, tau_rect=self.tau_rect)
+
+        score_id = -logsumexp_scaled(sim_id_loo, beta=self.beta)
+        if self.outlier_memories_ is not None:
+            sim_ood = X_proc @ self.outlier_memories_.T
+            score_ood = logsumexp_scaled(sim_ood, beta=self.beta)
+            return score_id + score_ood
+        return score_id
+
     def fit(
         self,
         X: np.ndarray,
@@ -113,7 +140,7 @@ class HopfieldOOD:
         if X_outliers is not None:
             self.outlier_memories_ = self._prep(X_outliers)
 
-        train_scores = self.decision_function(X)
+        train_scores = self._calibration_scores(X_proc)
         self.threshold_ = float(np.quantile(train_scores, 1.0 - self.contamination))
         return self
 
